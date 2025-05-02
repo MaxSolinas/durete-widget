@@ -18,6 +18,11 @@
       margin-top: 20px;
       font-size: 1.1em;
     }
+    .info {
+      margin-top: 10px;
+      font-style: italic;
+      color: #555;
+    }
   </style>
 </head>
 <body>
@@ -37,18 +42,26 @@
       try {
         const res = await fetch(`https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${code}&code_parametre=1532&size=1`);
         const data = await res.json();
-        const entry = data.data?.[0];
 
-        if (!entry) {
+        if (!data || !Array.isArray(data.data) || data.data.length === 0) {
           resultDiv.textContent = "Aucune donnée trouvée pour cette commune.";
           return;
         }
 
-        const valeur = entry.resultat_numerique ?? entry.resultat ?? "Non disponible";
+        const entry = data.data[0];
+        const valeur = entry.resultat_numerique !== null ? entry.resultat_numerique : (entry.resultat ?? "Non disponible");
         const unite = entry.unite_parametre ?? "";
         const date = entry.date_prelevement?.split('T')[0] ?? "Date inconnue";
 
-        resultDiv.innerHTML = `<strong>Dureté :</strong> ${valeur} ${unite} (prélevée le ${date})`;
+        let recommandation = "";
+        if (valeur < 15) recommandation = "Eau douce : aucun adoucisseur nécessaire.";
+        else if (valeur < 25) recommandation = "Eau moyennement dure : adoucisseur facultatif selon les usages.";
+        else recommandation = "Eau dure : adoucisseur recommandé.";
+
+        resultDiv.innerHTML = `
+          <strong>Dureté :</strong> ${valeur} ${unite} (prélevée le ${date})<br>
+          <div class="info">${recommandation}</div>
+        `;
       } catch (error) {
         resultDiv.textContent = "Erreur de récupération.";
       }
