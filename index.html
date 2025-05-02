@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dureté de l'eau potable</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1em;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, button {
+      padding: 8px;
+      margin-right: 10px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 1.1em;
+    }
+  </style>
+</head>
+<body>
+  <h2>Dureté de l'eau potable</h2>
+  <label>Code INSEE : </label>
+  <input type="text" id="code_insee" placeholder="ex: 54185">
+  <button onclick="fetchDurete()">Voir la dureté</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function fetchDurete() {
+      const code = document.getElementById('code_insee').value.trim();
+      const resultDiv = document.getElementById('result');
+      resultDiv.textContent = "Chargement...";
+
+      try {
+        const res = await fetch(`https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${code}&code_parametre=1532&size=1`);
+        const data = await res.json();
+        const entry = data.data?.[0];
+
+        if (!entry) {
+          resultDiv.textContent = "Aucune donnée trouvée pour cette commune.";
+          return;
+        }
+
+        const valeur = entry.resultat_numerique ?? entry.resultat ?? "Non disponible";
+        const unite = entry.unite_parametre ?? "";
+        const date = entry.date_prelevement?.split('T')[0] ?? "Date inconnue";
+
+        resultDiv.innerHTML = `<strong>Dureté :</strong> ${valeur} ${unite} (prélevée le ${date})`;
+      } catch (error) {
+        resultDiv.textContent = "Erreur de récupération.";
+      }
+    }
+  </script>
+</body>
+</html>
