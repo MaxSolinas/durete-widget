@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Dureté de l'eau potable</title>
+  <title>Durete de l'eau potable</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -10,7 +10,7 @@
       margin: auto;
       padding: 2em;
     }
-    label, select, button {
+    label, select {
       display: block;
       margin-top: 1em;
       width: 100%;
@@ -46,7 +46,6 @@
     const communeSelect = document.getElementById('commune');
     const resultDiv = document.getElementById('result');
 
-    // Charger les régions
     fetch('https://geo.api.gouv.fr/regions?fields=nom,code')
       .then(res => res.json())
       .then(data => {
@@ -107,24 +106,44 @@
         .then(res => res.json())
         .then(data => {
           if (!data.data || data.data.length === 0) {
-            resultDiv.innerHTML = "Aucune donnée de dureté disponible pour cette commune.";
+            // fallback via UDI si pas de donnée
+            fetch(`https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/udi?code_commune=${codeInsee}`)
+              .then(r => r.json())
+              .then(udis => {
+                if (!udis.data || udis.data.length === 0) {
+                  resultDiv.innerHTML = "Aucune donnée disponible pour cette commune.";
+                } else {
+                  const code_udi = udis.data[0].code_udi;
+                  fetch(`https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_udi=${code_udi}&code_parametre=1532&size=1`)
+                    .then(res => res.json())
+                    .then(data2 => {
+                      if (!data2.data || data2.data.length === 0) {
+                        resultDiv.innerHTML = "Aucune donnée disponible pour cette commune (via UDI).";
+                      } else {
+                        displayHardness(data2.data[0]);
+                      }
+                    });
+                }
+              });
             return;
           }
-          const d = data.data[0];
-          const interpretation = d.resultat_numerique < 15 ? "Eau douce" :
-                                 d.resultat_numerique < 25 ? "Eau moyennement dure" :
-                                 "Eau dure – adoucisseur recommandé";
-
-          resultDiv.innerHTML = `
-            <strong>Dureté :</strong> ${d.resultat_numerique} ${d.unite_parametre}<br>
-            <span class="info">(prélèvement du ${d.date_prelevement.split('T')[0]})</span><br>
-            <span class="info">${interpretation}</span>
-          `;
+          displayHardness(data.data[0]);
         })
         .catch(() => {
           resultDiv.innerHTML = "Erreur lors de l'appel à l'API.";
         });
     });
+
+    function displayHardness(d) {
+      const interpretation = d.resultat_numerique < 15 ? "Eau douce" :
+                             d.resultat_numerique < 25 ? "Eau moyennement dure" :
+                             "Eau dure – adoucisseur recommandé";
+      resultDiv.innerHTML = `
+        <strong>Dureté :</strong> ${d.resultat_numerique} ${d.unite_parametre}<br>
+        <span class="info">(prélèvement du ${d.date_prelevement.split('T')[0]})</span><br>
+        <span class="info">${interpretation}</span>
+      `;
+    }
   </script>
 </body>
 </html>
