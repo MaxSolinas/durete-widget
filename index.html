@@ -10,8 +10,9 @@
       max-width: 600px;
       margin: auto;
     }
-    input, button {
+    input, button, select {
       padding: 8px;
+      margin-top: 10px;
       margin-right: 10px;
     }
     #result {
@@ -27,44 +28,77 @@
 </head>
 <body>
   <h2>Dureté de l'eau potable</h2>
-  <label>Code INSEE : </label>
-  <input type="text" id="code_insee" placeholder="ex: 54185">
-  <button onclick="fetchDurete()">Voir la dureté</button>
+
+  <label>Code postal : </label>
+  <input type="text" id="code_postal" placeholder="ex: 54130">
+  <button onclick="chargerCommunes()">Rechercher</button>
+
+  <div id="commune_select_container" style="display:none;">
+    <label for="commune_select">Choisissez votre commune :</label><br>
+    <select id="commune_select" onchange="afficherDurete()"></select>
+  </div>
 
   <div id="result"></div>
 
   <script>
-    async function fetchDurete() {
-      const code = document.getElementById('code_insee').value.trim();
-      const resultDiv = document.getElementById('result');
-      resultDiv.textContent = "Chargement...";
+    let communes = {};
+    let duretes = {};
 
-      try {
-        const res = await fetch(`https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${code}&code_parametre=1532&size=1`);
-        const data = await res.json();
+    // Charger les données au démarrage
+    fetch('codes_postaux_communes.json')
+      .then(res => res.json())
+      .then(data => communes = data);
 
-        if (!data || !Array.isArray(data.data) || data.data.length === 0) {
-          resultDiv.textContent = "Aucune donnée trouvée pour cette commune.";
-          return;
-        }
+    fetch('durete.json')
+      .then(res => res.json())
+      .then(data => duretes = data);
 
-        const entry = data.data[0];
-        const valeur = entry.resultat_numerique !== null ? entry.resultat_numerique : (entry.resultat ?? "Non disponible");
-        const unite = entry.unite_parametre ?? "";
-        const date = entry.date_prelevement?.split('T')[0] ?? "Date inconnue";
+    function chargerCommunes() {
+      const cp = document.getElementById("code_postal").value.trim();
+      const select = document.getElementById("commune_select");
+      const container = document.getElementById("commune_select_container");
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "";
 
-        let recommandation = "";
-        if (valeur < 15) recommandation = "Eau douce : aucun adoucisseur nécessaire.";
-        else if (valeur < 25) recommandation = "Eau moyennement dure : adoucisseur facultatif selon les usages.";
-        else recommandation = "Eau dure : adoucisseur recommandé.";
-
-        resultDiv.innerHTML = `
-          <strong>Dureté :</strong> ${valeur} ${unite} (prélevée le ${date})<br>
-          <div class="info">${recommandation}</div>
-        `;
-      } catch (error) {
-        resultDiv.textContent = "Erreur de récupération.";
+      if (!communes[cp]) {
+        container.style.display = "none";
+        resultDiv.innerHTML = "Aucune commune trouvée pour ce code postal.";
+        return;
       }
+
+      // Remplir le menu déroulant
+      select.innerHTML = "";
+      communes[cp].forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.codeinsee;
+        opt.textContent = c.nom;
+        select.appendChild(opt);
+      });
+
+      container.style.display = "block";
+      // Afficher la première commune par défaut
+      afficherDurete();
+    }
+
+    function afficherDurete() {
+      const insee = document.getElementById("commune_select").value;
+      const resultDiv = document.getElementById("result");
+
+      if (!duretes[insee]) {
+        resultDiv.innerHTML = "Aucune donnée de dureté disponible pour cette commune.";
+        return;
+      }
+
+      const d = duretes[insee];
+      let recommandation = "";
+      if (d.durete < 15) recommandation = "Eau douce : aucun adoucisseur nécessaire.";
+      else if (d.durete < 25) recommandation = "Eau moyennement dure : adoucisseur facultatif selon les usages.";
+      else recommandation = "Eau dure : adoucisseur recommandé.";
+
+      resultDiv.innerHTML = `
+        <strong>Dureté :</strong> ${d.durete} ${d.unite} (prélevée le ${d.date})<br>
+        <div class="info">${recommandation}</div>
+      `;
     }
   </script>
 </body>
