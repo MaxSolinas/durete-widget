@@ -42,16 +42,16 @@
 
   <script>
     let communes = {};
-    let duretes = {};
+    let duretes_locales = {};
 
-    // Charger les données au démarrage
+    // Charger les deux fichiers JSON en mémoire
     fetch('codes_postaux_communes.json')
       .then(res => res.json())
       .then(data => communes = data);
 
     fetch('durete.json')
       .then(res => res.json())
-      .then(data => duretes = data);
+      .then(data => duretes_locales = data);
 
     function chargerCommunes() {
       const cp = document.getElementById("code_postal").value.trim();
@@ -66,7 +66,6 @@
         return;
       }
 
-      // Remplir le menu déroulant
       select.innerHTML = "";
       communes[cp].forEach(c => {
         const opt = document.createElement("option");
@@ -76,27 +75,54 @@
       });
 
       container.style.display = "block";
-      // Afficher la première commune par défaut
-      afficherDurete();
+      afficherDurete(); // Affiche la première par défaut
     }
 
-    function afficherDurete() {
+    async function getDureteFromAPI(codeInsee) {
+      const url = `https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis?code_commune=${codeInsee}&code_parametre=1532&size=1`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const result = data?.data?.[0];
+        if (!result) return null;
+
+        return {
+          durete: result.resultat_numerique,
+          unite: result.unite_parametre,
+          date: result.date_prelevement?.split("T")[0] ?? "Inconnue"
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    async function afficherDurete() {
       const insee = document.getElementById("commune_select").value;
       const resultDiv = document.getElementById("result");
 
-      if (!duretes[insee]) {
+      resultDiv.innerHTML = "Chargement...";
+
+      // Essayer via l'API Hubeau
+      let d = await getDureteFromAPI(insee);
+
+      // Sinon, fallback sur les données locales
+      if (!d && duretes_locales[insee]) {
+        d = duretes_locales[insee];
+        d.source = " (source locale)";
+      }
+
+      if (!d) {
         resultDiv.innerHTML = "Aucune donnée de dureté disponible pour cette commune.";
         return;
       }
 
-      const d = duretes[insee];
       let recommandation = "";
       if (d.durete < 15) recommandation = "Eau douce : aucun adoucisseur nécessaire.";
       else if (d.durete < 25) recommandation = "Eau moyennement dure : adoucisseur facultatif selon les usages.";
       else recommandation = "Eau dure : adoucisseur recommandé.";
 
       resultDiv.innerHTML = `
-        <strong>Dureté :</strong> ${d.durete} ${d.unite} (prélevée le ${d.date})<br>
+        <strong>Dureté :</strong> ${d.durete} ${d.unite} (prélevée le ${d.date}) ${d.source ?? ""}<br>
         <div class="info">${recommandation}</div>
       `;
     }
