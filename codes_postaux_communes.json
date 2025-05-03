@@ -1,0 +1,22 @@
+{
+  "54130": [
+    { "nom": "Essey-lès-Nancy", "codeinsee": "54185" },
+    { "nom": "Saint-Max", "codeinsee": "54482" },
+    { "nom": "Dommartemont", "codeinsee": "54165" }
+  ],
+  "75001": [
+    { "nom": "Paris 1er Arrondissement", "codeinsee": "75101" }
+  ],
+  "69002": [
+    { "nom": "Lyon 2e Arrondissement", "codeinsee": "69382" }
+  ],
+  "13001": [
+    { "nom": "Marseille 1er Arrondissement", "codeinsee": "13201" }
+  ],
+  "33000": [
+    { "nom": "Bordeaux", "codeinsee": "33063" }
+  ],
+  "06000": [
+    { "nom": "Nice", "codeinsee": "06088" }
+  ]
+}
